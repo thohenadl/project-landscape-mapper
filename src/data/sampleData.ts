@@ -149,21 +149,21 @@ export function buildSample(): LandscapeSnapshot {
   add({ title: 'Baubeginn erfolgt', role: 'ibv', stream: 5, phase: 3, offset: 200 })
   add({ title: 'Fertigstellung gemeldet', role: 'plT', stream: 5, phase: 4, offset: 140 })
 
-  // --- A few SIPOC connections (Output → Input flows) -----------------------
+  // --- A few predecessor/successor connections -----------------------------
   stakeholder.connections.push({
     targetMilestoneId: offenlage.id,
+    direction: 'successor',
     dependencyType: 'FS',
-    flowLabel: 'Kommunikationskonzept',
   })
   gwp.connections.push({
     targetMilestoneId: finve.id,
+    direction: 'successor',
     dependencyType: 'FS',
-    flowLabel: 'Genehmigte Wirtschaftlichkeitsprüfung',
   })
   entwurf.connections.push({
     targetMilestoneId: ausschreibung.id,
+    direction: 'successor',
     dependencyType: 'FS',
-    flowLabel: 'Geprüfte Entwurfsplanung',
   })
 
   return {

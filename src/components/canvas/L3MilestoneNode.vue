@@ -8,6 +8,7 @@
     <q-tooltip anchor="top middle" self="bottom middle" :delay="150" max-width="220px">
       <div class="text-weight-bold">{{ data.displayNumber }} · {{ data.title }}</div>
     </q-tooltip>
+    <div v-if="data.title" class="l3-caption">{{ data.title }}</div>
   </div>
 </template>
 
@@ -54,6 +55,23 @@ const textColor = computed(() => {
 }
 .l3-node:active {
   cursor: grabbing;
+}
+.l3-caption {
+  position: absolute;
+  top: calc(100% + 3px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 96px;
+  text-align: center;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.15;
+  color: var(--text);
+  pointer-events: none;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .l3-node.selected {
   outline: 3px solid var(--pine);

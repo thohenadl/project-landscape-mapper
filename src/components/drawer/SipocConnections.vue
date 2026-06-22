@@ -1,7 +1,7 @@
 <template>
   <div class="sipoc">
     <div class="row items-center justify-between q-mb-xs">
-      <div class="text-subtitle2">Outputs → Inputs (suppliers / customers)</div>
+      <div class="text-subtitle2">Connections (predecessors / successors)</div>
       <q-btn
         flat
         dense
@@ -16,7 +16,7 @@
     </div>
 
     <div v-if="connections.length === 0" class="text-caption text-grey-6 q-pa-sm">
-      No connections. This milestone’s outputs don’t yet flow into another.
+      No connections yet.
     </div>
 
     <q-card
@@ -26,27 +26,17 @@
       bordered
       class="q-pa-sm q-mb-sm conn-card"
     >
-      <q-select
-        dense
-        outlined
-        emit-value
-        map-options
-        label="Customer milestone"
-        :model-value="c.targetMilestoneId"
-        :options="otherOptions"
-        @update:model-value="(v) => store.updateConnection(l3Id, i, { targetMilestoneId: v })"
-      />
-      <div class="row q-col-gutter-sm q-mt-xs items-center">
+      <div class="row q-col-gutter-sm items-center">
         <div class="col">
           <q-select
             dense
             outlined
             emit-value
             map-options
-            label="Dependency"
-            :model-value="c.dependencyType"
-            :options="depOptions"
-            @update:model-value="(v) => store.updateConnection(l3Id, i, { dependencyType: v })"
+            label="Direction"
+            :model-value="c.direction"
+            :options="directionOptions"
+            @update:model-value="(v) => store.updateConnection(l3Id, i, { direction: v })"
           />
         </div>
         <div class="col-auto">
@@ -55,13 +45,29 @@
           </q-btn>
         </div>
       </div>
-      <q-input
+
+      <q-select
         dense
         outlined
+        emit-value
+        map-options
         class="q-mt-xs"
-        label="Flow (Output → Input)"
-        :model-value="c.flowLabel"
-        @update:model-value="(v) => store.updateConnection(l3Id, i, { flowLabel: String(v ?? '') })"
+        label="Milestone"
+        :model-value="c.targetMilestoneId"
+        :options="otherOptions"
+        @update:model-value="(v) => store.updateConnection(l3Id, i, { targetMilestoneId: v })"
+      />
+
+      <q-select
+        dense
+        outlined
+        emit-value
+        map-options
+        class="q-mt-xs"
+        label="Relation"
+        :model-value="c.dependencyType"
+        :options="depOptions"
+        @update:model-value="(v) => store.updateConnection(l3Id, i, { dependencyType: v })"
       />
     </q-card>
   </div>
@@ -70,7 +76,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useLandscapeStore } from '@/stores/landscape'
-import { DEPENDENCY_TYPES } from '@/types/landscape'
+import { DEPENDENCY_TYPES, CONNECTION_DIRECTIONS } from '@/types/landscape'
 
 const props = defineProps<{ l3Id: string }>()
 const store = useLandscapeStore()
@@ -83,6 +89,7 @@ const otherOptions = computed(() =>
     .map((m) => ({ label: `${m.displayNumber} · ${m.title}`, value: m.id })),
 )
 
+const directionOptions = CONNECTION_DIRECTIONS.map((d) => ({ label: d.label, value: d.value }))
 const depOptions = DEPENDENCY_TYPES.map((d) => ({ label: `${d.value} — ${d.de}`, value: d.value }))
 
 function addRow() {
@@ -90,8 +97,8 @@ function addRow() {
   if (!first) return
   store.addConnection(props.l3Id, {
     targetMilestoneId: first.value,
+    direction: 'successor',
     dependencyType: 'FS',
-    flowLabel: '',
   })
 }
 </script>

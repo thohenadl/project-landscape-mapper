@@ -86,12 +86,12 @@ const h = computed(() => totalHeight(store.streams.length))
   align-items: center;
   padding: 0 14px;
   box-sizing: border-box;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
   color: #2c3d37;
   border-right: 1px solid var(--border);
   background: #f1f6f4;
-  line-height: 1.15;
+  line-height: 1.2;
 }
 .top-band {
   position: absolute;
@@ -105,9 +105,9 @@ const h = computed(() => totalHeight(store.streams.length))
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 800;
-  letter-spacing: 1px;
+  letter-spacing: 1.2px;
   color: var(--pine-dark);
   text-transform: uppercase;
 }

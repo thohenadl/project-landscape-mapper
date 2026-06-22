@@ -152,7 +152,7 @@ export const useLandscapeStore = defineStore('landscape', () => {
         id: `${m.id}->${c.targetMilestoneId}`,
         source: `l3:${m.id}`,
         target: `l3:${c.targetMilestoneId}`,
-        label: `${c.dependencyType}${c.flowLabel ? `: ${c.flowLabel}` : ''}`,
+        label: c.dependencyType,
       })),
     ),
   )

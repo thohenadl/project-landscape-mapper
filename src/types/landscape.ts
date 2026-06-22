@@ -16,6 +16,14 @@ export const DEPENDENCY_TYPES: { value: DependencyType; label: string; de: strin
   { value: 'SF', label: 'Start → Finish', de: 'Anfang → Ende' },
 ]
 
+/** Whether the linked milestone comes before (supplies) or after (consumes) this one. */
+export type ConnectionDirection = 'predecessor' | 'successor'
+
+export const CONNECTION_DIRECTIONS: { value: ConnectionDirection; label: string }[] = [
+  { value: 'predecessor', label: 'Predecessor / Supplier' },
+  { value: 'successor', label: 'Successor / Customer' },
+]
+
 /** An ordered X-axis column. Geometry is derived from layout constants, not stored. */
 export interface Phase {
   id: string
@@ -36,14 +44,14 @@ export interface Role {
 }
 
 /**
- * A connection from one L3 milestone to another. Declaring it populates the
- * SIPOC supplier/customer relationship; `flowLabel` is the Input/Output that flows.
- * Connections are stored but NOT rendered on the canvas in draft 1.
+ * A connection from one L3 milestone to another. `direction` says whether the
+ * linked milestone is this one's predecessor (supplier) or successor (customer);
+ * `dependencyType` is the MS-Project relation. Stored but NOT rendered in draft 1.
  */
 export interface Connection {
-  targetMilestoneId: string // canonical UUID of the downstream (customer) L3 milestone
+  targetMilestoneId: string // canonical UUID of the linked L3 milestone
+  direction: ConnectionDirection // is the target a predecessor or successor of this milestone
   dependencyType: DependencyType
-  flowLabel: string // the Output→Input that flows (free text)
 }
 
 /** L2 synchronization milestone (gate): a vertical line across all streams + a top-band diamond. */

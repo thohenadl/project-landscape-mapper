@@ -1,0 +1,128 @@
+/* ============================================================
+   Quest One — Project Landscape Mapper
+   Design tokens, brand overrides and global styles.
+   (Quasar reads --q-* brand vars at runtime, so no sass needed.)
+   ============================================================ */
+
+:root {
+  /* Quasar brand */
+  --q-primary: #0f5c49;
+  --q-secondary: #2e8b6f;
+  --q-accent: #138a5e;
+  --q-dark: #14241f;
+  --q-positive: #1c8c5b;
+  --q-negative: #c0392b;
+  --q-warning: #d9962a;
+
+  /* App tokens */
+  --pine: #0f5c49;
+  --pine-dark: #0a4536;
+  --pine-tint: #e6f1ec;
+  --pine-tint-2: #d6e8e0;
+
+  --bg: #f4f6f5;
+  --surface: #ffffff;
+  --border: #e3e8e6;
+  --text: #16241f;
+  --muted: #6b7a75;
+
+  --radius: 14px;
+  --radius-sm: 10px;
+  --shadow-sm: 0 1px 2px rgba(16, 40, 34, 0.06);
+  --shadow: 0 1px 2px rgba(16, 40, 34, 0.06), 0 6px 20px rgba(16, 40, 34, 0.07);
+
+  /* pastel stat-chip tints */
+  --tint-green: #e6f1ec;
+  --tint-amber: #fbf1dd;
+  --tint-blue: #e7eef6;
+  --ink-green: #0f5c49;
+  --ink-amber: #9a6b16;
+  --ink-blue: #2a5b8c;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+#app {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Quasar surfaces transparent so the app background shows through */
+.q-page-container,
+.q-page {
+  background: transparent;
+}
+
+/* ---- Reusable card utility -------------------------------- */
+.qo-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.qo-section-title {
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.2px;
+}
+
+.qo-muted {
+  color: var(--muted);
+}
+
+/* ---- Slim modern scrollbar -------------------------------- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #c4d0cb transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #c4d0cb;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #a9b8b2;
+  background-clip: content-box;
+}
+
+/* ---- Vue Flow controls + canvas --------------------------- */
+.vue-flow__controls {
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow) !important;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.vue-flow__controls-button {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  width: 30px;
+  height: 30px;
+}
+.vue-flow__controls-button:hover {
+  background: var(--pine-tint);
+}
+.vue-flow__controls-button svg {
+  fill: var(--pine);
+}
+
+/* Quasar dialogs / cards rounded to match */
+.q-dialog__inner > .q-card {
+  border-radius: var(--radius);
+}

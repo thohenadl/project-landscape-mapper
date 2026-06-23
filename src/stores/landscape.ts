@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
-import type { Node } from '@vue-flow/core'
+import { MarkerType, type Edge, type Node } from '@vue-flow/core'
 import {
   type Connection,
   type DependencyType,
@@ -145,15 +145,29 @@ export const useLandscapeStore = defineStore('landscape', () => {
     return nodes
   })
 
-  /** Edges derived from connections — built but NOT bound to the canvas in draft 1. */
-  const flowEdges = computed(() =>
+  /**
+   * Edges derived from each milestone's connections, oriented by direction so the
+   * arrow always points supplier → customer:
+   *  - `successor`   → this milestone supplies the target (this → target)
+   *  - `predecessor` → the target supplies this milestone (target → this)
+   * The canvas renders these on hover only (filtered to the hovered milestone).
+   */
+  const flowEdges = computed<Edge[]>(() =>
     l3.value.flatMap((m) =>
-      m.connections.map((c) => ({
-        id: `${m.id}->${c.targetMilestoneId}`,
-        source: `l3:${m.id}`,
-        target: `l3:${c.targetMilestoneId}`,
-        label: c.dependencyType,
-      })),
+      m.connections.map((c) => {
+        const isSuccessor = c.direction === 'successor'
+        const sourceId = isSuccessor ? m.id : c.targetMilestoneId
+        const targetId = isSuccessor ? c.targetMilestoneId : m.id
+        return {
+          id: `${m.id}->${c.targetMilestoneId}:${c.direction}`,
+          source: `l3:${sourceId}`,
+          target: `l3:${targetId}`,
+          type: 'smoothstep',
+          animated: true,
+          label: c.dependencyType,
+          markerEnd: MarkerType.ArrowClosed,
+        }
+      }),
     ),
   )
 

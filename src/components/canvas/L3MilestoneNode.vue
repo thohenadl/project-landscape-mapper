@@ -4,6 +4,10 @@
     :class="{ selected }"
     :style="{ background: data.color, color: textColor }"
   >
+    <!-- Invisible anchors so Vue Flow can draw connection lines to/from this node.
+         Connections stay non-editable (canvas sets :nodes-connectable="false"). -->
+    <Handle type="target" :position="Position.Left" class="l3-handle" />
+    <Handle type="source" :position="Position.Right" class="l3-handle" />
     {{ data.displayNumber }}
     <q-tooltip anchor="top middle" self="bottom middle" :delay="150" max-width="220px">
       <div class="text-weight-bold">{{ data.displayNumber }} · {{ data.title }}</div>
@@ -14,6 +18,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { Handle, Position } from '@vue-flow/core'
 
 const props = defineProps<{
   id: string
@@ -55,6 +60,16 @@ const textColor = computed(() => {
 }
 .l3-node:active {
   cursor: grabbing;
+}
+/* Hidden edge anchors — present only so hover connection lines can attach. */
+.l3-handle {
+  opacity: 0;
+  pointer-events: none;
+  width: 1px;
+  height: 1px;
+  min-width: 0;
+  min-height: 0;
+  border: none;
 }
 .l3-caption {
   position: absolute;

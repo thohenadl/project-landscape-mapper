@@ -1,6 +1,6 @@
 <template>
   <q-layout view="lHh Lpr lFf">
-    <q-drawer :model-value="true" persistent :width="232" side="left" class="qo-sidebar">
+    <q-drawer v-model="drawerOpen" :width="232" side="left" bordered class="qo-sidebar">
       <!-- Brand -->
       <div class="brand row items-center no-wrap">
         <div class="brand-mark">Q1</div>
@@ -38,6 +38,15 @@
       <q-page class="qo-page column no-wrap">
         <!-- Slim header -->
         <header class="qo-topbar row items-center no-wrap">
+          <q-btn
+            flat
+            round
+            dense
+            :icon="drawerOpen ? 'menu_open' : 'menu'"
+            class="qo-toggle"
+            aria-label="Toggle sidebar"
+            @click="drawerOpen = !drawerOpen"
+          />
           <div class="col">
             <div class="topbar-title">{{ titles[view] }}</div>
             <div class="topbar-sub qo-muted">Project landscape mapper</div>
@@ -67,6 +76,7 @@ type ViewKey = 'editor' | 'admin'
 
 const store = useLandscapeStore()
 const view = ref<ViewKey>('editor')
+const drawerOpen = ref(true)
 
 const items: { key: ViewKey; label: string; icon: string }[] = [
   { key: 'editor', label: 'Editor', icon: 'map' },
@@ -161,6 +171,10 @@ const titles: Record<ViewKey, string> = {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   gap: 12px;
+}
+.qo-toggle {
+  color: var(--muted);
+  margin-right: 6px;
 }
 .topbar-title {
   font-size: 18px;

@@ -2,7 +2,7 @@
   <div class="landscape-canvas">
     <VueFlow
       :nodes="nodes"
-      :edges="[]"
+      :edges="visibleEdges"
       :min-zoom="0.15"
       :max-zoom="2.5"
       :nodes-connectable="false"
@@ -10,6 +10,8 @@
       :snap-to-grid="false"
       :delete-key-code="null"
       @node-click="onNodeClick"
+      @node-mouse-enter="onNodeMouseEnter"
+      @node-mouse-leave="onNodeMouseLeave"
       @dblclick="onDblClick"
     >
       <Background :gap="26" pattern-color="#d7e3de" />
@@ -29,8 +31,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { VueFlow, useVueFlow, type Node, type NodeMouseEvent } from '@vue-flow/core'
+import { computed, ref, watch } from 'vue'
+import {
+  MarkerType,
+  VueFlow,
+  useVueFlow,
+  type Edge,
+  type Node,
+  type NodeMouseEvent,
+} from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import SwimlaneBackground from './SwimlaneBackground.vue'
@@ -59,6 +68,38 @@ watch(
     nodes.value = cloneNodes(next)
   },
 )
+
+// Hover-to-reveal connections: only the hovered milestone's edges are rendered.
+const SUPPLIER_COLOR = '#1565C0' // incoming  (a supplier feeds this milestone)
+const CUSTOMER_COLOR = '#E07A1F' // outgoing  (this milestone feeds a customer)
+const hoveredL3Id = ref<string | null>(null)
+
+const visibleEdges = computed<Edge[]>(() => {
+  if (!hoveredL3Id.value) return []
+  const self = `l3:${hoveredL3Id.value}`
+  return store.flowEdges
+    .filter((e) => e.source === self || e.target === self)
+    .map((e) => {
+      // Color relative to the hovered node: an edge pointing AT it is a supplier link.
+      const stroke = e.target === self ? SUPPLIER_COLOR : CUSTOMER_COLOR
+      return {
+        ...e,
+        style: { stroke, strokeWidth: 2 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: stroke },
+        labelBgStyle: { fill: '#ffffff' },
+        labelStyle: { fill: stroke, fontWeight: 700, fontSize: 11 },
+      }
+    })
+})
+
+function onNodeMouseEnter(e: NodeMouseEvent) {
+  if (e.node.type === 'l3') hoveredL3Id.value = e.node.data.id
+}
+function onNodeMouseLeave(e: NodeMouseEvent) {
+  if (e.node.type === 'l3' && hoveredL3Id.value === e.node.data.id) {
+    hoveredL3Id.value = null
+  }
+}
 
 // Drag snapping + gate constraints (must run inside this VueFlow context).
 useFlowInteractions()

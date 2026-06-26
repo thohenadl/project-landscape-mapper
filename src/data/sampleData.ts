@@ -19,9 +19,15 @@ function uid(): string {
 }
 
 export function buildSample(): LandscapeSnapshot {
-  // --- Phases (X columns) ---------------------------------------------------
-  const phaseNames = ['Idee', 'Definition', 'Planung', 'Realisierung', 'Abschluss']
-  const phases: Phase[] = phaseNames.map((name) => ({ id: uid(), name }))
+  // --- Phases (timeline columns) --------------------------------------------
+  const phaseDefs: { name: string; durationMonths: number }[] = [
+    { name: 'Idee', durationMonths: 3 },
+    { name: 'Definition', durationMonths: 5 },
+    { name: 'Planung', durationMonths: 8 },
+    { name: 'Realisierung', durationMonths: 12 },
+    { name: 'Abschluss', durationMonths: 4 },
+  ]
+  const phases: Phase[] = phaseDefs.map((p) => ({ id: uid(), name: p.name, durationMonths: p.durationMonths }))
 
   // --- L2 gates: one closing each phase (placed at the phase's right edge) ---
   const gateTitles = [
@@ -34,7 +40,7 @@ export function buildSample(): LandscapeSnapshot {
   const gates: L2Milestone[] = gateTitles.map((title, j) => ({
     id: uid(),
     title,
-    x: phaseLeftX(j + 1), // right boundary of phase j
+    x: phaseLeftX(phases, j + 1), // right boundary of phase j
   }))
 
   // --- Streams (Y rows) -----------------------------------------------------
@@ -63,7 +69,7 @@ export function buildSample(): LandscapeSnapshot {
   const streamId = (i: number): string => streams[i].id
   const gateId = (j: number): string => gates[j].id
   // X within phase j (offset from the phase's left edge), always ≤ that phase's gate.
-  const xIn = (j: number, offset = 160): number => phaseLeftX(j) + offset
+  const xIn = (j: number, offset = 160): number => phaseLeftX(phases, j) + offset
 
   // --- L3 milestones --------------------------------------------------------
   let seq = 0
@@ -168,7 +174,7 @@ export function buildSample(): LandscapeSnapshot {
 
   return {
     schemaVersion: SCHEMA_VERSION,
-    project: { id: uid(), name: 'Großprojekt Beispiel (BUV)' },
+    project: { id: uid(), name: 'Großprojekt Beispiel (BUV)', startDate: '2026-01-01' },
     phases,
     streams,
     roles,

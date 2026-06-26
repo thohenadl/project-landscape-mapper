@@ -15,7 +15,18 @@
         <q-item-section>
           <q-input dense borderless :model-value="g.title" placeholder="Gate title" @update:model-value="(v) => store.updateL2(g.id, { title: String(v ?? '') })" />
         </q-item-section>
-        <q-item-section side style="width: 120px">
+        <q-item-section side style="width: 150px">
+          <q-input
+            dense
+            outlined
+            type="date"
+            label="Date"
+            clearable
+            :model-value="g.date ?? null"
+            @update:model-value="(v) => store.updateL2(g.id, { date: (v as string) || undefined })"
+          />
+        </q-item-section>
+        <q-item-section side style="width: 110px">
           <q-input
             dense
             outlined
@@ -44,7 +55,7 @@
 import { computed, ref } from 'vue'
 import { useQuasar } from 'quasar'
 import { useLandscapeStore } from '@/stores/landscape'
-import { phaseLeftX } from '@/composables/useLayout'
+import { totalMonths, xFromMonth } from '@/composables/useLayout'
 
 const store = useLandscapeStore()
 const $q = useQuasar()
@@ -55,9 +66,9 @@ const gatesSorted = computed(() => [...store.l2].sort((a, b) => a.x - b.x))
 function add() {
   const title = newTitle.value.trim()
   if (!title) return
-  // Place new gate at the right edge (or shift right of the last gate).
+  // Place new gate at the end of the timeline (or shift right of the last gate).
   const lastX = store.l2.length ? Math.max(...store.l2.map((g) => g.x)) : 0
-  const x = Math.max(phaseLeftX(Math.max(store.phases.length, 1)), lastX + 160)
+  const x = Math.max(xFromMonth(totalMonths(store.phases)), lastX + 160)
   store.addL2({ title, x })
   newTitle.value = ''
 }

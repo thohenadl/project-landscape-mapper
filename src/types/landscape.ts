@@ -24,10 +24,14 @@ export const CONNECTION_DIRECTIONS: { value: ConnectionDirection; label: string 
   { value: 'successor', label: 'Successor / Customer' },
 ]
 
-/** An ordered X-axis column. Geometry is derived from layout constants, not stored. */
+/**
+ * An ordered X-axis column on the timeline. Phases tile the timeline back-to-back;
+ * `durationMonths` sets how many months wide the column is (and thus its pixel width).
+ */
 export interface Phase {
   id: string
   name: string
+  durationMonths: number // how many calendar months this phase spans (drives column width)
 }
 
 /** An ordered Y-axis row (swimlane). Geometry is derived from layout constants. */
@@ -59,6 +63,7 @@ export interface L2Milestone {
   id: string // canonical UUID
   title: string
   x: number // free X position (graph coords); renders the vertical guide + diamond
+  date?: string // optional ISO 'YYYY-MM-DD'; metadata only, does not drive position
 }
 
 /** L3 core milestone: a single point owned by exactly one role, in one stream, under one gate. */
@@ -70,6 +75,7 @@ export interface L3Milestone {
   parentL2Id: string // exactly one parent gate; invariant: x <= that L2's x
   streamId: string // exactly one stream (lane)
   x: number // free X (graph coords); the phase is derived from this
+  date?: string // optional ISO 'YYYY-MM-DD'; metadata only, does not drive position
   description: string // SIPOC "Process" — what this milestone does
   connections: Connection[] // outgoing Output→Input flows (suppliers/customers)
 }
@@ -78,11 +84,12 @@ export interface L3Milestone {
 export interface ProjectMeta {
   id: string
   name: string
+  startDate: string // ISO 'YYYY-MM-DD' (first of the start month); anchors the timeline
 }
 
 /** The complete serialized state of the application. */
 export interface LandscapeSnapshot {
-  schemaVersion: 1
+  schemaVersion: 2
   project: ProjectMeta
   phases: Phase[]
   streams: Stream[]
@@ -92,4 +99,4 @@ export interface LandscapeSnapshot {
   nextDisplayNumber: number // monotonic counter for L3 display numbers
 }
 
-export const SCHEMA_VERSION = 1 as const
+export const SCHEMA_VERSION = 2 as const

@@ -67,6 +67,17 @@
           </div>
         </div>
 
+        <q-input
+          v-model="date"
+          outlined
+          dense
+          type="date"
+          label="Date"
+          clearable
+          class="q-mb-md"
+          style="max-width: 240px"
+        />
+
         <div class="row items-center q-gutter-sm q-mb-md">
           <q-chip dense icon="view_week" color="blue-grey-2" text-color="blue-grey-9">
             Phase: {{ phaseName }}
@@ -164,6 +175,10 @@ const parentL2Id = computed<string>({
 const streamId = computed<string>({
   get: () => milestone.value?.streamId ?? '',
   set: (v) => milestone.value && store.updateL3(milestone.value.id, { streamId: v }),
+})
+const date = computed<string | null>({
+  get: () => milestone.value?.date ?? null,
+  set: (v) => milestone.value && store.updateL3(milestone.value.id, { date: v || undefined }),
 })
 
 const roleOptions = computed(() =>

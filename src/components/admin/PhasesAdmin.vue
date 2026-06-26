@@ -1,10 +1,22 @@
 <template>
   <div class="admin-section">
-    <div class="text-subtitle1 q-mb-xs">Phases (columns)</div>
+    <div class="text-subtitle1 q-mb-xs">Timeline &amp; phases</div>
     <div class="text-caption text-grey-7 q-mb-md">
-      Ordered background columns, left to right. A milestone’s phase is derived from where it sits, so
-      phases are purely visual — removing one just narrows the canvas.
+      The project start date anchors the timeline; each phase spans a number of months, and its column
+      width scales accordingly. Phases tile the timeline back-to-back, so the total scope in months is
+      the sum of the phase durations.
     </div>
+
+    <q-input
+      outlined
+      dense
+      type="date"
+      label="Project start date"
+      class="q-mb-md"
+      style="max-width: 240px"
+      :model-value="store.project.startDate"
+      @update:model-value="(v) => store.setStartDate(String(v ?? ''))"
+    />
 
     <q-list bordered separator class="rounded-borders">
       <q-item v-for="(p, i) in store.phases" :key="p.id">
@@ -16,6 +28,17 @@
         </q-item-section>
         <q-item-section>
           <q-input dense borderless :model-value="p.name" @update:model-value="(v) => store.renamePhase(p.id, String(v ?? ''))" />
+        </q-item-section>
+        <q-item-section side style="width: 120px">
+          <q-input
+            dense
+            outlined
+            type="number"
+            min="1"
+            label="Months"
+            :model-value="p.durationMonths"
+            @update:model-value="(v) => store.updatePhase(p.id, { durationMonths: Math.max(1, Math.round(Number(v) || 1)) })"
+          />
         </q-item-section>
         <q-item-section side>
           <q-btn flat dense round icon="delete" color="grey-7" @click="store.removePhase(p.id)" />

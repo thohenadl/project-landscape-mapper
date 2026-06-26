@@ -14,6 +14,7 @@ import {
   SCHEMA_VERSION,
 } from '@/types/landscape'
 import {
+  DEFAULT_PHASE_MONTHS,
   L3_SIZE,
   laneCenterY,
   phaseIndexFromX,
@@ -29,6 +30,27 @@ function uid(): string {
   return crypto.randomUUID()
 }
 
+/** ISO 'YYYY-MM-01' for the first of the current month (default timeline start). */
+function firstOfThisMonth(): string {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+}
+
+/**
+ * Upgrade an older snapshot to the current schema in place-ish (returns a v2 snapshot).
+ * v1 had no phase durations, no project start date and no milestone dates.
+ */
+function migrate(snap: LandscapeSnapshot): LandscapeSnapshot {
+  const s = clone(snap)
+  if (s.schemaVersion === SCHEMA_VERSION) return s
+  if (!s.project.startDate) s.project.startDate = firstOfThisMonth()
+  for (const p of s.phases) {
+    if (typeof (p as Phase).durationMonths !== 'number') p.durationMonths = DEFAULT_PHASE_MONTHS
+  }
+  s.schemaVersion = SCHEMA_VERSION
+  return s
+}
+
 function pad(n: number): string {
   return String(n).padStart(3, '0')
 }
@@ -41,7 +63,7 @@ function clone<T>(value: T): T {
 export function emptySnapshot(): LandscapeSnapshot {
   return {
     schemaVersion: SCHEMA_VERSION,
-    project: { id: uid(), name: 'Untitled Project' },
+    project: { id: uid(), name: 'Untitled Project', startDate: firstOfThisMonth() },
     phases: [],
     streams: [],
     roles: [],
@@ -53,7 +75,7 @@ export function emptySnapshot(): LandscapeSnapshot {
 
 export const useLandscapeStore = defineStore('landscape', () => {
   // ---- State ----------------------------------------------------------------
-  const project = ref<ProjectMeta>({ id: uid(), name: 'Untitled Project' })
+  const project = ref<ProjectMeta>({ id: uid(), name: 'Untitled Project', startDate: firstOfThisMonth() })
   const phases = ref<Phase[]>([])
   const streams = ref<Stream[]>([])
   const roles = ref<Role[]>([])
@@ -82,7 +104,7 @@ export const useLandscapeStore = defineStore('landscape', () => {
   function phaseOfL3(id: string): Phase | undefined {
     const m = l3ById.value.get(id)
     if (!m || phases.value.length === 0) return undefined
-    return phases.value[phaseIndexFromX(m.x, phases.value.length)]
+    return phases.value[phaseIndexFromX(m.x, phases.value)]
   }
 
   // ---- Constraint helper ----------------------------------------------------
@@ -108,7 +130,7 @@ export const useLandscapeStore = defineStore('landscape', () => {
       focusable: false,
       zIndex: -10,
       style: {
-        width: `${totalWidth(phases.value.length)}px`,
+        width: `${totalWidth(phases.value)}px`,
         height: `${totalHeight(streams.value.length)}px`,
       },
     })
@@ -331,15 +353,29 @@ export const useLandscapeStore = defineStore('landscape', () => {
     return true
   }
 
-  // ---- Phases CRUD (purely visual columns; no foreign keys) -----------------
-  function addPhase(name: string): Phase {
-    const p: Phase = { id: uid(), name }
+  // ---- Project / timeline ---------------------------------------------------
+  function setStartDate(iso: string): void {
+    if (iso) project.value.startDate = iso
+  }
+  function updateProject(patch: Partial<Omit<ProjectMeta, 'id'>>): void {
+    Object.assign(project.value, patch)
+  }
+
+  // ---- Phases CRUD (timeline columns; no foreign keys) ----------------------
+  function addPhase(name: string, durationMonths = DEFAULT_PHASE_MONTHS): Phase {
+    const p: Phase = { id: uid(), name, durationMonths }
     phases.value.push(p)
     return p
   }
   function renamePhase(id: string, name: string): void {
     const p = phases.value.find((x) => x.id === id)
     if (p) p.name = name
+  }
+  function updatePhase(id: string, patch: Partial<Omit<Phase, 'id'>>): void {
+    const p = phases.value.find((x) => x.id === id)
+    if (!p) return
+    Object.assign(p, patch)
+    if (patch.durationMonths !== undefined && !(p.durationMonths > 0)) p.durationMonths = 1
   }
   function reorderPhase(from: number, to: number): void {
     if (to < 0 || to >= phases.value.length || from === to) return
@@ -410,7 +446,9 @@ export const useLandscapeStore = defineStore('landscape', () => {
       const raw = localStorage.getItem(STORAGE_KEY)
       if (!raw) return
       const parsed = JSON.parse(raw) as LandscapeSnapshot
-      if (parsed?.schemaVersion === SCHEMA_VERSION) hydrate(parsed)
+      if (parsed?.schemaVersion === SCHEMA_VERSION || parsed?.schemaVersion === 1) {
+        hydrate(migrate(parsed))
+      }
     } catch {
       /* ignore corrupt storage */
     }
@@ -423,13 +461,13 @@ export const useLandscapeStore = defineStore('landscape', () => {
 
   function importJson(text: string): void {
     const parsed = JSON.parse(text) as LandscapeSnapshot
-    if (parsed?.schemaVersion !== SCHEMA_VERSION) {
+    if (parsed?.schemaVersion !== SCHEMA_VERSION && parsed?.schemaVersion !== 1) {
       throw new Error(`Unsupported schemaVersion: ${String(parsed?.schemaVersion)}`)
     }
     if (!Array.isArray(parsed.streams) || !Array.isArray(parsed.l3)) {
       throw new Error('Invalid landscape file (missing collections).')
     }
-    hydrate(parsed)
+    hydrate(migrate(parsed))
   }
 
   function loadSample(): void {
@@ -491,9 +529,13 @@ export const useLandscapeStore = defineStore('landscape', () => {
     renameStream,
     reorderStream,
     removeStream,
+    // project / timeline
+    setStartDate,
+    updateProject,
     // phases
     addPhase,
     renamePhase,
+    updatePhase,
     reorderPhase,
     removePhase,
     // roles

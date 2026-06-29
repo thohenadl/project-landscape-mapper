@@ -4,10 +4,12 @@
 
 import {
   type Connection,
+  type FlowElement,
   type L2Milestone,
   type L3Milestone,
   type LandscapeSnapshot,
   type Phase,
+  type RaciEntry,
   type Role,
   type Stream,
   SCHEMA_VERSION,
@@ -71,6 +73,20 @@ export function buildSample(): LandscapeSnapshot {
   // X within phase j (offset from the phase's left edge), always ≤ that phase's gate.
   const xIn = (j: number, offset = 160): number => phaseLeftX(phases, j) + offset
 
+  // --- Elements (shared SIPOC input/output artifacts) -----------------------
+  const elementNames = [
+    'Bedarfsanmeldung',
+    'Stakeholder-Liste',
+    'Kommunikationskonzept',
+    'Wirtschaftlichkeitsbericht',
+    'Finanzierungsvereinbarung',
+    'Entwurfsplanung',
+    'Genehmigungsunterlagen',
+    'Ausschreibungsunterlagen',
+  ]
+  const elements: FlowElement[] = elementNames.map((name) => ({ id: uid(), name }))
+  const elId = (name: string): string => elements[elementNames.indexOf(name)].id
+
   // --- L3 milestones --------------------------------------------------------
   let seq = 0
   const l3: L3Milestone[] = []
@@ -80,7 +96,12 @@ export function buildSample(): LandscapeSnapshot {
     stream: number
     phase: number
     offset?: number
+    summary?: string
     description?: string
+    inputElementIds?: string[]
+    outputElementIds?: string[]
+    definitionOfDone?: string[]
+    raci?: RaciEntry[]
     connections?: Connection[]
   }): L3Milestone {
     seq++
@@ -92,7 +113,12 @@ export function buildSample(): LandscapeSnapshot {
       parentL2Id: gateId(input.phase),
       streamId: streamId(input.stream),
       x: xIn(input.phase, input.offset ?? 160),
+      summary: input.summary ?? '',
       description: input.description ?? '',
+      inputElementIds: input.inputElementIds ?? [],
+      outputElementIds: input.outputElementIds ?? [],
+      definitionOfDone: input.definitionOfDone ?? [],
+      raci: input.raci ?? [],
       connections: input.connections ?? [],
     }
     l3.push(m)
@@ -100,7 +126,15 @@ export function buildSample(): LandscapeSnapshot {
   }
 
   // Netzkonzeption
-  add({ title: 'Neue Maßnahme zur Aufnahme ins Programm', role: 'agI', stream: 0, phase: 0, offset: 90 })
+  add({
+    title: 'Neue Maßnahme zur Aufnahme ins Programm',
+    role: 'agI',
+    stream: 0,
+    phase: 0,
+    offset: 90,
+    summary: 'Bedarf wird identifiziert und ins Programm aufgenommen.',
+    outputElementIds: [elId('Bedarfsanmeldung')],
+  })
   add({ title: 'Vorplanungsheft beim EBA(F) vorgelegt', role: 'plT', stream: 0, phase: 1, offset: 200 })
 
   // Projektmanagement
@@ -111,7 +145,21 @@ export function buildSample(): LandscapeSnapshot {
     stream: 1,
     phase: 1,
     offset: 120,
-    description: 'Analyse aller relevanten Stakeholder inkl. Kommunikationskonzept.',
+    summary: 'Alle relevanten Stakeholder erfasst und Kommunikation geplant.',
+    description:
+      '<p>Analyse aller relevanten Stakeholder inkl. <strong>Kommunikationskonzept</strong>.</p>' +
+      '<ul><li>Stakeholder identifizieren</li><li>Einfluss/Interesse bewerten</li><li>Kommunikationsmaßnahmen ableiten</li></ul>',
+    inputElementIds: [elId('Bedarfsanmeldung')],
+    outputElementIds: [elId('Stakeholder-Liste'), elId('Kommunikationskonzept')],
+    definitionOfDone: [
+      'Stakeholder-Liste vollständig und freigegeben',
+      'Kommunikationskonzept abgestimmt',
+    ],
+    raci: [
+      { roleId: roleId('plT'), letters: ['R', 'A'] },
+      { roleId: roleId('plK'), letters: ['C'] },
+      { roleId: roleId('agI'), letters: ['I'] },
+    ],
   })
   const offenlage = add({ title: 'Offenlage erfolgt', role: 'plT', stream: 1, phase: 2, offset: 110 })
   add({ title: 'Funktionsträger ernannt', role: 'plK', stream: 1, phase: 3, offset: 150 })
@@ -136,7 +184,12 @@ export function buildSample(): LandscapeSnapshot {
     stream: 3,
     phase: 2,
     offset: 230,
-    description: 'Entwurfsplanung für die Genehmigungsplanung erstellt und geprüft.',
+    summary: 'Entwurfsplanung für die Genehmigungsplanung erstellt und geprüft.',
+    description: '<p>Entwurfsplanung für die Genehmigungsplanung erstellt und geprüft.</p>',
+    // 'Genehmigungsunterlagen' is consumed here but produced nowhere → traceability gap.
+    inputElementIds: [elId('Genehmigungsunterlagen')],
+    outputElementIds: [elId('Entwurfsplanung')],
+    definitionOfDone: ['Entwurfsplanung durch Fachstelle geprüft und freigegeben'],
   })
   const ausschreibung = add({
     title: 'Ausschreibungsunterlagen Bau veröffentlicht',
@@ -178,6 +231,7 @@ export function buildSample(): LandscapeSnapshot {
     phases,
     streams,
     roles,
+    elements,
     l2: gates,
     l3,
     nextDisplayNumber: seq + 1,

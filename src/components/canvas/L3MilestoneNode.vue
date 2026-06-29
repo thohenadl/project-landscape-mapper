@@ -42,7 +42,7 @@ const textColor = computed(() => {
 .l3-node {
   width: 100%;
   height: 100%;
-  border-radius: 11px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;

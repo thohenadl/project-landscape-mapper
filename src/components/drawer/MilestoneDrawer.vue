@@ -7,100 +7,126 @@
           {{ milestone.displayNumber }}
         </q-chip>
         <div class="text-subtitle1 q-ml-sm ellipsis col">{{ milestone.title || 'Milestone' }}</div>
+        <q-chip dense outline color="grey-7" class="text-caption q-mr-sm">
+          id: {{ shortId }}
+          <q-tooltip>{{ milestone.id }}</q-tooltip>
+        </q-chip>
         <q-btn flat dense round icon="close" @click="close" />
       </div>
 
       <q-separator />
 
-      <!-- Body -->
+      <!-- Canvas body -->
       <q-card-section class="ms-body col scroll q-pa-md">
-        <q-input v-model="title" outlined dense label="Title" class="q-mb-md" />
-
-        <q-select
-          v-model="roleId"
-          outlined
-          dense
-          emit-value
-          map-options
-          label="Owning role"
-          :options="roleOptions"
-          class="q-mb-md"
-        >
-          <template #selected>
-            <div class="row items-center no-wrap">
-              <span class="swatch q-mr-sm" :style="{ background: selectedRoleColor }" />
-              {{ selectedRoleName }}
+        <!-- Top row: name + short description + meta strip -->
+        <div class="canvas-cell head-cell q-mb-md">
+          <div class="row q-col-gutter-md">
+            <div class="col-12 col-md-5">
+              <q-input v-model="title" outlined dense label="Title" />
             </div>
-          </template>
-          <template #option="scope">
-            <q-item v-bind="scope.itemProps">
-              <q-item-section avatar>
-                <span class="swatch" :style="{ background: scope.opt.color }" />
-              </q-item-section>
-              <q-item-section>{{ scope.opt.label }}</q-item-section>
-            </q-item>
-          </template>
-        </q-select>
-
-        <div class="row q-col-gutter-md q-mb-md">
-          <div class="col">
-            <q-select
-              v-model="parentL2Id"
-              outlined
-              dense
-              emit-value
-              map-options
-              label="Parent gate (deadline)"
-              :options="gateOptions"
-            />
+            <div class="col-12 col-md-7">
+              <q-input v-model="summary" outlined dense label="Short description" />
+            </div>
           </div>
-          <div class="col">
-            <q-select
-              v-model="streamId"
-              outlined
-              dense
-              emit-value
-              map-options
-              label="Stream"
-              :options="streamOptions"
-            />
+
+          <div class="row q-col-gutter-sm items-center q-mt-sm">
+            <div class="col">
+              <q-select
+                v-model="roleId"
+                outlined
+                dense
+                emit-value
+                map-options
+                label="Owning role"
+                :options="roleOptions"
+              >
+                <template #selected>
+                  <div class="row items-center no-wrap">
+                    <span class="swatch q-mr-sm" :style="{ background: selectedRoleColor }" />
+                    {{ selectedRoleName }}
+                  </div>
+                </template>
+                <template #option="scope">
+                  <q-item v-bind="scope.itemProps">
+                    <q-item-section avatar>
+                      <span class="swatch" :style="{ background: scope.opt.color }" />
+                    </q-item-section>
+                    <q-item-section>{{ scope.opt.label }}</q-item-section>
+                  </q-item>
+                </template>
+              </q-select>
+            </div>
+            <div class="col">
+              <q-select
+                v-model="parentL2Id"
+                outlined
+                dense
+                emit-value
+                map-options
+                label="Parent gate"
+                :options="gateOptions"
+              />
+            </div>
+            <div class="col">
+              <q-select
+                v-model="streamId"
+                outlined
+                dense
+                emit-value
+                map-options
+                label="Stream"
+                :options="streamOptions"
+              />
+            </div>
+            <div class="col">
+              <q-input v-model="date" outlined dense type="date" label="Date" clearable />
+            </div>
+            <div class="col-auto">
+              <q-chip dense icon="view_week" color="blue-grey-2" text-color="blue-grey-9">
+                {{ phaseName }}
+              </q-chip>
+            </div>
           </div>
         </div>
 
-        <q-input
-          v-model="date"
-          outlined
-          dense
-          type="date"
-          label="Date"
-          clearable
-          class="q-mb-md"
-          style="max-width: 240px"
-        />
+        <!-- Canvas grid: left (S/I) · process · right (O/C) -->
+        <div class="bmc-grid">
+          <div class="canvas-cell area-left">
+            <ConnectionColumn :l3-id="milestone.id" direction="predecessor" />
+            <q-separator class="q-my-sm" />
+            <ElementSelect :l3-id="milestone.id" kind="input" />
+          </div>
 
-        <div class="row items-center q-gutter-sm q-mb-md">
-          <q-chip dense icon="view_week" color="blue-grey-2" text-color="blue-grey-9">
-            Phase: {{ phaseName }}
-          </q-chip>
-          <q-chip dense outline color="grey-7" class="text-caption">
-            id: {{ shortId }}
-            <q-tooltip>{{ milestone.id }}</q-tooltip>
-          </q-chip>
+          <div class="canvas-cell area-process column no-wrap">
+            <div class="canvas-label q-mb-xs">Process detail</div>
+            <q-editor
+              v-model="description"
+              min-height="220px"
+              class="col process-editor"
+              :dense="$q.screen.lt.md"
+              :toolbar="[
+                ['bold', 'italic', 'underline', 'strike'],
+                ['unordered', 'ordered'],
+                [{ list: 'no-icons', options: ['h2', 'h3', 'p'] }],
+                ['removeFormat'],
+              ]"
+            />
+          </div>
+
+          <div class="canvas-cell area-right">
+            <ElementSelect :l3-id="milestone.id" kind="output" />
+            <q-separator class="q-my-sm" />
+            <ConnectionColumn :l3-id="milestone.id" direction="successor" />
+          </div>
+
+          <div class="canvas-cell area-dod">
+            <DefinitionOfDone :l3-id="milestone.id" />
+          </div>
+
+          <div class="canvas-cell area-raci">
+            <RaciGrid :l3-id="milestone.id" />
+          </div>
         </div>
-
-        <q-input
-          v-model="description"
-          outlined
-          dense
-          type="textarea"
-          autogrow
-          label="Process (what this milestone does)"
-          class="q-mb-md"
-        />
-
-        <q-separator class="q-mb-md" />
-
-        <SipocConnections :l3-id="milestone.id" />
       </q-card-section>
 
       <q-separator />
@@ -118,7 +144,10 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import { useQuasar } from 'quasar'
-import SipocConnections from './SipocConnections.vue'
+import ConnectionColumn from './ConnectionColumn.vue'
+import ElementSelect from './ElementSelect.vue'
+import RaciGrid from './RaciGrid.vue'
+import DefinitionOfDone from './DefinitionOfDone.vue'
 import { useLandscapeStore } from '@/stores/landscape'
 
 const props = defineProps<{ modelValue: string | null }>()
@@ -155,13 +184,14 @@ function close() {
   emit('update:modelValue', null)
 }
 
-function field<K extends 'title' | 'description'>(key: K) {
+function field<K extends 'title' | 'summary' | 'description'>(key: K) {
   return computed<string>({
     get: () => milestone.value?.[key] ?? '',
     set: (v) => milestone.value && store.updateL3(milestone.value.id, { [key]: v }),
   })
 }
 const title = field('title')
+const summary = field('summary')
 const description = field('description')
 
 const roleId = computed<string>({
@@ -216,9 +246,9 @@ function remove() {
 
 <style scoped>
 .ms-dialog {
-  width: 560px;
-  max-width: 92vw;
-  max-height: 88vh;
+  width: 1120px;
+  max-width: 95vw;
+  max-height: 90vh;
   border-radius: var(--radius);
 }
 .ms-header {
@@ -228,10 +258,68 @@ function remove() {
 }
 .ms-body {
   min-height: 0;
+  background: var(--bg);
 }
 .ms-footer {
   background: var(--surface);
 }
+
+/* ---- Canvas tiles --------------------------------------------------------- */
+.canvas-cell {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 12px 14px;
+}
+.canvas-label {
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--pine);
+}
+
+.bmc-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 1fr 1.5fr 1fr;
+  grid-template-areas:
+    'left process right'
+    'dod  dod     raci';
+}
+.area-left {
+  grid-area: left;
+}
+.area-process {
+  grid-area: process;
+}
+.area-right {
+  grid-area: right;
+}
+.area-dod {
+  grid-area: dod;
+}
+.area-raci {
+  grid-area: raci;
+}
+.process-editor {
+  min-height: 0;
+}
+
+/* Stack the canvas into one column on narrow screens. */
+@media (max-width: 900px) {
+  .bmc-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'left'
+      'process'
+      'right'
+      'dod'
+      'raci';
+  }
+}
+
 .swatch {
   display: inline-block;
   width: 16px;

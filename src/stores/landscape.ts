@@ -4,11 +4,13 @@ import { MarkerType, type Edge, type Node } from '@vue-flow/core'
 import {
   type Connection,
   type DependencyType,
+  type FlowElement,
   type L2Milestone,
   type L3Milestone,
   type LandscapeSnapshot,
   type Phase,
   type ProjectMeta,
+  type RaciLetter,
   type Role,
   type Stream,
   SCHEMA_VERSION,
@@ -40,12 +42,26 @@ function firstOfThisMonth(): string {
  * Upgrade an older snapshot to the current schema in place-ish (returns a v2 snapshot).
  * v1 had no phase durations, no project start date and no milestone dates.
  */
+/** Versions we know how to read (older ones are upgraded by `migrate`). */
+function isSupportedVersion(v: unknown): boolean {
+  return v === 1 || v === 2 || v === SCHEMA_VERSION
+}
+
 function migrate(snap: LandscapeSnapshot): LandscapeSnapshot {
   const s = clone(snap)
   if (s.schemaVersion === SCHEMA_VERSION) return s
   if (!s.project.startDate) s.project.startDate = firstOfThisMonth()
   for (const p of s.phases) {
     if (typeof (p as Phase).durationMonths !== 'number') p.durationMonths = DEFAULT_PHASE_MONTHS
+  }
+  // v2 -> v3: introduce the shared element list and the new L3 canvas fields.
+  if (!Array.isArray(s.elements)) s.elements = []
+  for (const m of s.l3) {
+    if (typeof m.summary !== 'string') m.summary = ''
+    if (!Array.isArray(m.inputElementIds)) m.inputElementIds = []
+    if (!Array.isArray(m.outputElementIds)) m.outputElementIds = []
+    if (!Array.isArray(m.definitionOfDone)) m.definitionOfDone = []
+    if (!Array.isArray(m.raci)) m.raci = []
   }
   s.schemaVersion = SCHEMA_VERSION
   return s
@@ -67,6 +83,7 @@ export function emptySnapshot(): LandscapeSnapshot {
     phases: [],
     streams: [],
     roles: [],
+    elements: [],
     l2: [],
     l3: [],
     nextDisplayNumber: 1,
@@ -79,6 +96,7 @@ export const useLandscapeStore = defineStore('landscape', () => {
   const phases = ref<Phase[]>([])
   const streams = ref<Stream[]>([])
   const roles = ref<Role[]>([])
+  const elements = ref<FlowElement[]>([])
   const l2 = ref<L2Milestone[]>([])
   const l3 = ref<L3Milestone[]>([])
   const nextDisplayNumber = ref(1)
@@ -88,8 +106,24 @@ export const useLandscapeStore = defineStore('landscape', () => {
   // ---- Lookups --------------------------------------------------------------
   const roleById = computed(() => new Map(roles.value.map((r) => [r.id, r])))
   const streamById = computed(() => new Map(streams.value.map((s) => [s.id, s])))
+  const elementById = computed(() => new Map(elements.value.map((e) => [e.id, e])))
   const l2ById = computed(() => new Map(l2.value.map((g) => [g.id, g])))
   const l3ById = computed(() => new Map(l3.value.map((m) => [m.id, m])))
+
+  /**
+   * Traceability index: for each element, which milestones consume it (asInput)
+   * and which produce it (asOutput). Powers gap analysis — e.g. an element that
+   * is an input somewhere but an output nowhere (`asOutput.length === 0`).
+   */
+  const elementUsage = computed(() => {
+    const usage = new Map<string, { asInput: string[]; asOutput: string[] }>()
+    for (const e of elements.value) usage.set(e.id, { asInput: [], asOutput: [] })
+    for (const m of l3.value) {
+      for (const id of m.inputElementIds) usage.get(id)?.asInput.push(m.id)
+      for (const id of m.outputElementIds) usage.get(id)?.asOutput.push(m.id)
+    }
+    return usage
+  })
 
   function streamIndex(id: string): number {
     const i = streams.value.findIndex((s) => s.id === id)
@@ -252,7 +286,12 @@ export const useLandscapeStore = defineStore('landscape', () => {
       parentL2Id: input.parentL2Id,
       streamId: input.streamId,
       x: clampToGate(input.x, input.parentL2Id),
+      summary: '',
       description: input.description ?? '',
+      inputElementIds: [],
+      outputElementIds: [],
+      definitionOfDone: [],
+      raci: [],
       connections: [],
     }
     nextDisplayNumber.value++
@@ -329,6 +368,59 @@ export const useLandscapeStore = defineStore('landscape', () => {
     const m = l3.value.find((x) => x.id === l3Id)
     if (!m) return
     m.connections.splice(index, 1)
+  }
+
+  // ---- Flow elements (shared SIPOC input/output artifacts) ------------------
+  /** Find an element by name (case-insensitive, trimmed) or create one. */
+  function addElement(name: string): FlowElement | null {
+    const trimmed = name.trim()
+    if (!trimmed) return null
+    const existing = elements.value.find(
+      (e) => e.name.toLowerCase() === trimmed.toLowerCase(),
+    )
+    if (existing) return existing
+    const e: FlowElement = { id: uid(), name: trimmed }
+    elements.value.push(e)
+    return e
+  }
+
+  function renameElement(id: string, name: string): void {
+    const e = elements.value.find((x) => x.id === id)
+    if (e && name.trim()) e.name = name.trim()
+  }
+
+  /** Remove an element and strip it from every milestone's inputs/outputs. */
+  function removeElement(id: string): void {
+    elements.value = elements.value.filter((e) => e.id !== id)
+    for (const m of l3.value) {
+      m.inputElementIds = m.inputElementIds.filter((x) => x !== id)
+      m.outputElementIds = m.outputElementIds.filter((x) => x !== id)
+    }
+  }
+
+  function setL3Inputs(l3Id: string, ids: string[]): void {
+    updateL3(l3Id, { inputElementIds: [...new Set(ids)] })
+  }
+  function setL3Outputs(l3Id: string, ids: string[]): void {
+    updateL3(l3Id, { outputElementIds: [...new Set(ids)] })
+  }
+
+  // ---- RACI -----------------------------------------------------------------
+  /** Toggle one RACI letter for a role on a milestone; prunes empty entries. */
+  function toggleRaci(l3Id: string, roleId: string, letter: RaciLetter): void {
+    const m = l3.value.find((x) => x.id === l3Id)
+    if (!m) return
+    let entry = m.raci.find((r) => r.roleId === roleId)
+    if (!entry) {
+      entry = { roleId, letters: [] }
+      m.raci.push(entry)
+    }
+    if (entry.letters.includes(letter)) {
+      entry.letters = entry.letters.filter((l) => l !== letter)
+    } else {
+      entry.letters.push(letter)
+    }
+    m.raci = m.raci.filter((r) => r.letters.length > 0)
   }
 
   // ---- Streams CRUD ---------------------------------------------------------
@@ -411,6 +503,7 @@ export const useLandscapeStore = defineStore('landscape', () => {
       phases: phases.value,
       streams: streams.value,
       roles: roles.value,
+      elements: elements.value,
       l2: l2.value,
       l3: l3.value,
       nextDisplayNumber: nextDisplayNumber.value,
@@ -424,6 +517,7 @@ export const useLandscapeStore = defineStore('landscape', () => {
     phases.value = s.phases
     streams.value = s.streams
     roles.value = s.roles
+    elements.value = s.elements ?? []
     l2.value = s.l2
     l3.value = s.l3
     nextDisplayNumber.value = s.nextDisplayNumber ?? 1
@@ -446,7 +540,7 @@ export const useLandscapeStore = defineStore('landscape', () => {
       const raw = localStorage.getItem(STORAGE_KEY)
       if (!raw) return
       const parsed = JSON.parse(raw) as LandscapeSnapshot
-      if (parsed?.schemaVersion === SCHEMA_VERSION || parsed?.schemaVersion === 1) {
+      if (isSupportedVersion(parsed?.schemaVersion)) {
         hydrate(migrate(parsed))
       }
     } catch {
@@ -461,7 +555,7 @@ export const useLandscapeStore = defineStore('landscape', () => {
 
   function importJson(text: string): void {
     const parsed = JSON.parse(text) as LandscapeSnapshot
-    if (parsed?.schemaVersion !== SCHEMA_VERSION && parsed?.schemaVersion !== 1) {
+    if (!isSupportedVersion(parsed?.schemaVersion)) {
       throw new Error(`Unsupported schemaVersion: ${String(parsed?.schemaVersion)}`)
     }
     if (!Array.isArray(parsed.streams) || !Array.isArray(parsed.l3)) {
@@ -480,7 +574,7 @@ export const useLandscapeStore = defineStore('landscape', () => {
 
   // ---- Auto-persist ---------------------------------------------------------
   watch(
-    [project, phases, streams, roles, l2, l3, nextDisplayNumber],
+    [project, phases, streams, roles, elements, l2, l3, nextDisplayNumber],
     () => {
       if (!hydrating) persist()
     },
@@ -496,12 +590,15 @@ export const useLandscapeStore = defineStore('landscape', () => {
     phases,
     streams,
     roles,
+    elements,
     l2,
     l3,
     nextDisplayNumber,
     // lookups / derived
     roleById,
     streamById,
+    elementById,
+    elementUsage,
     l2ById,
     l3ById,
     streamIndex,
@@ -524,6 +621,14 @@ export const useLandscapeStore = defineStore('landscape', () => {
     addConnection,
     updateConnection,
     removeConnection,
+    // elements (SIPOC inputs/outputs)
+    addElement,
+    renameElement,
+    removeElement,
+    setL3Inputs,
+    setL3Outputs,
+    // raci
+    toggleRaci,
     // streams
     addStream,
     renameStream,

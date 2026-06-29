@@ -48,6 +48,33 @@ export interface Role {
 }
 
 /**
+ * A reusable SIPOC artifact / deliverable. Referenced (by id) from an L3's
+ * `inputElementIds` and `outputElementIds`. Living in a single shared list lets
+ * the map be measured: e.g. an element consumed as an input but produced as an
+ * output nowhere is a traceability gap.
+ */
+export interface FlowElement {
+  id: string
+  name: string
+}
+
+/** RACI responsibility letter. */
+export type RaciLetter = 'R' | 'A' | 'C' | 'I'
+
+export const RACI_LETTERS: { value: RaciLetter; label: string }[] = [
+  { value: 'R', label: 'Responsible' },
+  { value: 'A', label: 'Accountable' },
+  { value: 'C', label: 'Consulted' },
+  { value: 'I', label: 'Informed' },
+]
+
+/** RACI assignment for one role on one milestone (a role may hold several letters). */
+export interface RaciEntry {
+  roleId: string
+  letters: RaciLetter[]
+}
+
+/**
  * A connection from one L3 milestone to another. `direction` says whether the
  * linked milestone is this one's predecessor (supplier) or successor (customer);
  * `dependencyType` is the MS-Project relation. Stored but NOT rendered in draft 1.
@@ -76,8 +103,13 @@ export interface L3Milestone {
   streamId: string // exactly one stream (lane)
   x: number // free X (graph coords); the phase is derived from this
   date?: string // optional ISO 'YYYY-MM-DD'; metadata only, does not drive position
-  description: string // SIPOC "Process" — what this milestone does
-  connections: Connection[] // outgoing Output→Input flows (suppliers/customers)
+  summary: string // short one-line description (canvas top row)
+  description: string // SIPOC "Process detail" — rich-text HTML of what this milestone does
+  inputElementIds: string[] // FlowElement ids consumed by this milestone (SIPOC Inputs)
+  outputElementIds: string[] // FlowElement ids produced by this milestone (SIPOC Outputs)
+  definitionOfDone: string[] // list of completion criteria
+  raci: RaciEntry[] // RACI assignments; only roles with ≥1 letter are stored
+  connections: Connection[] // predecessor (supplier) / successor (customer) links
 }
 
 /** L1 = the single project / the whole map. */
@@ -89,14 +121,15 @@ export interface ProjectMeta {
 
 /** The complete serialized state of the application. */
 export interface LandscapeSnapshot {
-  schemaVersion: 2
+  schemaVersion: 3
   project: ProjectMeta
   phases: Phase[]
   streams: Stream[]
   roles: Role[]
+  elements: FlowElement[] // shared SIPOC input/output artifacts
   l2: L2Milestone[]
   l3: L3Milestone[]
   nextDisplayNumber: number // monotonic counter for L3 display numbers
 }
 
-export const SCHEMA_VERSION = 2 as const
+export const SCHEMA_VERSION = 3 as const
